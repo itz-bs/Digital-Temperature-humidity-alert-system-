@@ -1,0 +1,55 @@
+#include "DHT.h"
+
+#define DHTPIN 4          // DHT11 data pin
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// Pins to logic gates
+#define TEMP_ALERT_PIN 6   // goes to AND + OR input A
+#define HUM_ALERT_PIN 7    // goes to AND + OR input B
+
+// Green LED for safe status
+#define GREEN_LED 8        // directly connected with 220Ω resistor to GND
+
+// Thresholds
+float TEMP_LIMIT = 30.0;   // °C
+float HUM_LIMIT  = 70.0;   // %
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+
+  pinMode(TEMP_ALERT_PIN, OUTPUT);
+  pinMode(HUM_ALERT_PIN, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+
+  digitalWrite(TEMP_ALERT_PIN, LOW);
+  digitalWrite(HUM_ALERT_PIN, LOW);
+  digitalWrite(GREEN_LED, HIGH);   // Green LED ON = safe
+}
+
+void loop() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Sensor error!");
+    delay(2000);
+    return;
+  }
+
+  Serial.print("Temp: "); Serial.print(t);
+  Serial.print("°C  Hum: "); Serial.print(h); Serial.println("%");
+
+  bool tempHigh = (t >= TEMP_LIMIT);
+  bool humHigh  = (h >= HUM_LIMIT);
+
+  // Send logic signals
+  digitalWrite(TEMP_ALERT_PIN, tempHigh);
+  digitalWrite(HUM_ALERT_PIN, humHigh);
+
+  // Green LED ON only when both safe
+  digitalWrite(GREEN_LED, !(tempHigh || humHigh));
+
+  delay(2000); // DHT11 reads every 2s
+}
